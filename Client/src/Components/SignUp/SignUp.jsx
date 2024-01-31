@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import styles from '../../styles/styles';
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { RxAvatar } from "react-icons/rx"
-
+import { server } from '../../server';
+import axios from "axios"
 
 const SignUp = () => {
 
@@ -12,9 +13,28 @@ const SignUp = () => {
     const [name, setName] = useState("")
     const [visible, setVisible] = useState(false);
     const [avatar, setAvatar] = useState(null)
+    const navigate=useNavigate()
 
-    const handleSubmit = () => {
-        console.log("handdleSubmit");
+    const handleSubmit = (e) => {
+        e.preventDefault()
+        const config={
+            headers:{"Content-Type":"multipart/form-data"}
+        };
+        const newForm=new FormData();
+        newForm.append('file',avatar);
+        newForm.append('name',name);
+        newForm.append('email',email);
+        newForm.append('password',password);
+        console.log(newForm)
+
+        axios
+        .post(`${server}/create-user`, newForm, config)
+        .then((res)=>{
+            if(res.data.success===true){
+                navigate("/")
+            }
+        })
+        .catch((err)=>console.log(err));
     };
 
 
@@ -22,10 +42,6 @@ const SignUp = () => {
         const file = e.target.files[0]
         setAvatar(file)
     }
-
-
-
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -36,10 +52,11 @@ const SignUp = () => {
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                    <form className="space-y-6">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
-                            <label
-                                htmlFor="email"
+                            <label 
+                                id='name'
+                                htmlFor="name"
                                 className="block text-sm font-medium text-gray-700"
                             >
                                 Full Name
@@ -60,6 +77,7 @@ const SignUp = () => {
 
                         <div>
                             <label
+                            id='email'
                                 htmlFor="email"
                                 className="block text-sm font-medium text-gray-700"
                             >
@@ -81,7 +99,8 @@ const SignUp = () => {
 
                         <div>
                             <label
-                                htmlFor="Password"
+                           
+                                htmlFor="password"
                                 className="block text-sm font-medium text-gray-700"
                             >
                                 Password
