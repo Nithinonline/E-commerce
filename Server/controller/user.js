@@ -7,12 +7,13 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const jwt = require("jsonwebtoken");
 const sendMail = require("../utils/sendMail");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors")
-
+const sendToken = require("../utils/jwtToken");
+const { isAuthenticated } = require("../middleware/auth");
 const router = express.Router()
 
 
 
-
+//SignUp
 router.post("/create-user", upload.single("file"), async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -70,22 +71,71 @@ const createActivationToken = (user) => {
 
 //To activate user
 
-router.post('activation', catchAsyncErrors(async (req, res, next) => {
+router.post('/activation', catchAsyncErrors(async (req, res, next) => {
+
   try {
-    const { activation_Token } = req.body;
+
+    const { activation_token } = req.body;
+
     const newUser = jwt.verify(
-      activation_Token,
+      activation_token,
       process.env.ACTIVATION_SECRET
     );
-    if(!newUser){
-      return next(new ErrorHandler("Invalid Token",400))
+
+    if (!newUser) {
+      return next(new ErrorHandler("Invalid Token", 400))
     }
-    const {name,email, password, avatar}=newUser;
-    User.create({name, email, password, avatar})
+
+    const { name, email, password, avatar } = newUser;
+    User.create({ name, email, password, avatar })
     sendToken(newUser, 201, res)
   } catch (err) {
-
+    return next(new ErrorHandler(err.message, 500))
   }
 }))
+
+
+//Login
+
+router.post("/login-user", catchAsyncErrors(async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return next(new ErrorHandler("Please provide all fields", 400))
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+      return next(new ErrorHandler("Requested User not found", 400))
+    }
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return next(new ErrorHandler("Invalid Credentials", 400))
+    }
+    sendToken(user, 201, res)
+  } catch (err) {
+    return next(new ErrorHandler(err.message, 500))
+  }
+
+}))
+
+
+
+//To get user deatils
+
+router.get('/getuser', isAuthenticated, catchAsyncErrors(async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id)
+    if (!user) {
+      return next(new ErrorHandler("Requested user not found", 400));
+    }
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (err) {
+    return next(new ErrorHandler(err.message, 500))
+  }
+}));
 
 module.exports = router
